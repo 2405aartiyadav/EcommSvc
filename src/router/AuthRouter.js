@@ -156,4 +156,15 @@ AuthRouter.post("/update-user-detail", async (req, res) => {
     res.status(400).send("Please send valid user details.");
   }
 });
+
+AuthRouter.post('/user-detail',async(req,res)=>{
+  const{username,email}=req.body;
+  const user=await User.findOne({username:username,email:email},{"_id":0,"password":0,"__v": 0,});
+  if(user){
+    return res.status(200).send(user)
+  }
+  else{
+    return res.status(400).send({message:"User not found"});
+  }
+})
 module.exports = { AuthRouter };

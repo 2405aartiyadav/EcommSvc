@@ -2,6 +2,7 @@ const bcrypt = require("bcrypt");
 const { Router } = require("express");
 const AuthRouter = Router({ strict: true });
 const User = require("../model/UserModel.js");
+const UserAuth = require("../model/UserAuth.js");
 const jwt = require("../utility/JwtToken.js");
 
 AuthRouter.get("/Authtest", (req, res) => {
@@ -9,51 +10,61 @@ AuthRouter.get("/Authtest", (req, res) => {
 });
 
 AuthRouter.post("/signup", async (req, res) => {
-  try {
-    if (
-      Object.keys(req.body).length != 0 &&
-      Object.keys(req.body).toString().includes("firstName") &&
-      Object.keys(req.body).toString().includes("lastName") &&
-      Object.keys(req.body).toString().includes("email") &&
-      Object.keys(req.body).toString().includes("username") &&
-      Object.keys(req.body).toString().includes("password")
-    ) {
-      const { email, username, password, firstName, lastName } = req.body;
+  if (
+    Object.keys(req.body).length != 0 &&
+    Object.keys(req.body).toString().includes("firstName") &&
+    Object.keys(req.body).toString().includes("lastName") &&
+    Object.keys(req.body).toString().includes("email") &&
+    Object.keys(req.body).toString().includes("username") &&
+    Object.keys(req.body).toString().includes("password")
+  ) {
+    const { email, username, password, firstName, lastName } = req.body;
 
-      // console.log(name+""+email+" "+password+" ");
-      const existingUser = await User.findOne({ email, username });
-      console.log("existingUser-" + existingUser);
-      if (existingUser) {
-        return res.status(400).send("User already exists");
-      }
-
-      bcrypt.hash(password, 10, async (err, hash) => {
+    // console.log(name+""+email+" "+password+" ");
+    const existingUser = await User.findOne({ email, username });
+    console.log("existingUser-" + existingUser);
+    if (existingUser) {
+      return res.status(400).send("User already exists");
+    } else {
+      try {
         const userObj = new User({
           firstName: firstName,
           lastName: lastName,
           email: email,
           username: username,
-          password: hash,
         });
+        let obj = await userObj.save();
+        console.log(obj);
 
-        try {
-          let obj = await userObj.save();
-          console.log(obj);
-          res.status(201).send("User has been created");
-        } catch (error) {
-          res.status(500).send(error.message);
+        if (obj) {
+          bcrypt.hash(password, 10, async (err, hash) => {
+            const authObj = new UserAuth({
+              email: email,
+              username: username,
+              password: hash,
+            });
+            try {
+              let obj = await authObj.save();
+              console.log(obj);
+              res.status(201).send("User has been created");
+            } catch (error) {
+              res.status(500).send(error.message);
+            }
+          });
         }
-      });
+      } catch (error) {
+        res.status(500).send(error.message);
+      }
     }
-  } catch (error) {
-    res.status(500).send(error.message);
+  } else {
+    res.status(400).send("Please send valid user details");
   }
 });
 
 AuthRouter.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
-    const user = await User.findOne({ username });
+    const user = await UserAuth.findOne({ username });
 
     if (user) {
       const passwordMatch = await bcrypt.compare(password, user.password);
@@ -66,11 +77,11 @@ AuthRouter.post("/login", async (req, res) => {
         res.status(200).send(resObj);
       } else {
         let = resObj = {
-          status: falses,
+          status: false,
           message: "Invalid username or password",
           token: "",
         };
-        res.status(401).send(reqObj);
+        res.status(401).send(resObj);
       }
     } else {
       let resObj = {
@@ -136,7 +147,6 @@ AuthRouter.post("/update-user-detail", async (req, res) => {
               phoneNumber: phoneNumber,
               gender: gender,
               dob: dob,
-              password: hash,
               address: address,
               country: country,
               state: state,
@@ -157,14 +167,97 @@ AuthRouter.post("/update-user-detail", async (req, res) => {
   }
 });
 
-AuthRouter.post('/user-detail',async(req,res)=>{
-  const{username,email}=req.body;
-  const user=await User.findOne({username:username,email:email},{"_id":0,"password":0,"__v": 0,});
-  if(user){
-    return res.status(200).send(user)
+AuthRouter.post("/user-detail", async (req, res) => {
+  const { username } = req.body;
+  const user = await User.findOne(
+    { username: username },
+    { _id: 0, password: 0, __v: 0 }
+  );
+  if (user) {
+    return res.status(200).send(user);
+  } else {
+    return res.status(400).send({ message: "User not found" });
+  }
+});
+
+AuthRouter.post("/check-email-to-reset-password", async (req, res) => {
+  const { email } = req.body;
+  if (Object.keys(req.body).toString().includes("email")) {
+    const checkUser = await UserAuth.findOne({
+      email: email,
+    });
+    console.log(`${checkUser}checkUser`);
+    if (checkUser) {
+      if (checkUser.isSecurityQuestionSet) {
+        res.status(200).send({
+          securityQuestion1: checkUser.securityQuestion1,
+          securityQuestion2: checkUser.securityQuestion2,
+        });
+      } else {
+        res
+          .status(200)
+          .send(
+            "Security questions are not set,Please contact to your administrator"
+          );
+      }
+    } else {
+      res.status(400).send("Email does not exist");
+    }
+  } else {
+    res.status(400).send("Please send valid user details.");
+  }
+});
+
+AuthRouter.post("/verify-security-answer", async(req, res) => {
+  if (
+    Object.keys(req.body).toString().includes("email") &&
+    Object.keys(req.body).toString().includes("securityQuestion1") &&
+    Object.keys(req.body).toString().includes("securityQuestion2") &&
+    Object.keys(req.body).toString().includes("securityAns1") &&
+    Object.keys(req.body).toString().includes("securityAns2")
+  ) {
+    const {email,securityQuestion1,securityQuestion2,securityAns1,securityAns2}=req.body;
+    const checkUser = await UserAuth.findOne({
+      email: email,securityQuestion1:securityQuestion1,securityQuestion2:securityQuestion2,securityAns1:securityAns1,securityAns2:securityAns2
+    });
+    console.log(checkUser);
+    if(checkUser){
+      res.status(200).send("Please reset your password")
+    }
+    else{
+      res.status(400).send("User verification failed")
+    }
+    
   }
   else{
-    return res.status(400).send({message:"User not found"});
+    res.status(400).send("Plase enter valid data")
   }
+});
+
+AuthRouter.post('/reset-password',async(req,res)=>{
+  const { email, password } = req.body;
+ 
+    bcrypt.hash(password, 10, async (err, hash) => {
+      // const updatePaswd = new UserAuth({
+      //   email: email,
+      //   password: hash,
+      // });
+      try{
+        const updatePassword=await UserAuth.updateOne({email:email},{$set:{password:hash}})
+
+        console.log(updatePassword);
+        res.status(200).send("Password updated");
+
+      }catch(err){
+        console.log(err);
+        res.status(400).send(err)
+         mnv
+      }
+    
+      
+
+    })
+  
+
 })
 module.exports = { AuthRouter };

@@ -13,7 +13,6 @@ const UserSchema = new mongoose.Schema({
   phoneNumber: Number,
   gender: String,
   dob: Date,
-  password: String,
   address: String,
   country: String,
   state: String,
@@ -22,4 +21,4 @@ const UserSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model("User", UserSchema);
-module.exports =  User;
+module.exports = User;

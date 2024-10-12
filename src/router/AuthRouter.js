@@ -5,10 +5,14 @@ const User = require("../model/UserModel.js");
 const UserAuth = require("../model/UserAuth.js");
 const jwt = require("../utility/JwtToken.js");
 
+
+
 AuthRouter.get("/Authtest", (req, res) => {
   res.send("test authrouter");
 });
 
+
+//signup
 AuthRouter.post("/signup", async (req, res) => {
   if (
     Object.keys(req.body).length != 0 &&
@@ -61,6 +65,8 @@ AuthRouter.post("/signup", async (req, res) => {
   }
 });
 
+
+//login
 AuthRouter.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -96,6 +102,8 @@ AuthRouter.post("/login", async (req, res) => {
   }
 });
 
+
+//verify token
 AuthRouter.get("/verify-token", (req, res) => {
   let { token } = req.headers;
   try {
@@ -107,6 +115,8 @@ AuthRouter.get("/verify-token", (req, res) => {
   }
 });
 
+
+//update user detail
 AuthRouter.post("/update-user-detail", async (req, res) => {
   console.log(req.body);
   if (Object.keys(req.body).length > 0) {
@@ -167,6 +177,8 @@ AuthRouter.post("/update-user-detail", async (req, res) => {
   }
 });
 
+
+//user detail
 AuthRouter.post("/user-detail", async (req, res) => {
   const { username } = req.body;
   const user = await User.findOne(
@@ -179,6 +191,7 @@ AuthRouter.post("/user-detail", async (req, res) => {
     return res.status(400).send({ message: "User not found" });
   }
 });
+
 
 AuthRouter.post("/check-email-to-reset-password", async (req, res) => {
   const { email } = req.body;

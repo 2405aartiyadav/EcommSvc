@@ -4,13 +4,11 @@ const AuthRouter = Router({ strict: true });
 const User = require("../model/UserModel.js");
 const UserAuth = require("../model/UserAuth.js");
 const jwt = require("../utility/JwtToken.js");
-
-
+const uploadeProfileImage = require("../cloudinary/cloudinary.js");
 
 AuthRouter.get("/Authtest", (req, res) => {
   res.send("test authrouter");
 });
-
 
 //signup
 AuthRouter.post("/signup", async (req, res) => {
@@ -65,7 +63,6 @@ AuthRouter.post("/signup", async (req, res) => {
   }
 });
 
-
 //login
 AuthRouter.post("/login", async (req, res) => {
   try {
@@ -102,7 +99,6 @@ AuthRouter.post("/login", async (req, res) => {
   }
 });
 
-
 //verify token
 AuthRouter.get("/verify-token", (req, res) => {
   let { token } = req.headers;
@@ -114,6 +110,7 @@ AuthRouter.get("/verify-token", (req, res) => {
     res.status(401).send("Unauthorized");
   }
 });
+
 
 
 //update user detail
@@ -177,7 +174,6 @@ AuthRouter.post("/update-user-detail", async (req, res) => {
   }
 });
 
-
 //user detail
 AuthRouter.post("/user-detail", async (req, res) => {
   const { username } = req.body;
@@ -191,7 +187,6 @@ AuthRouter.post("/user-detail", async (req, res) => {
     return res.status(400).send({ message: "User not found" });
   }
 });
-
 
 AuthRouter.post("/check-email-to-reset-password", async (req, res) => {
   const { email } = req.body;
@@ -221,7 +216,7 @@ AuthRouter.post("/check-email-to-reset-password", async (req, res) => {
   }
 });
 
-AuthRouter.post("/verify-security-answer", async(req, res) => {
+AuthRouter.post("/verify-security-answer", async (req, res) => {
   if (
     Object.keys(req.body).toString().includes("email") &&
     Object.keys(req.body).toString().includes("securityQuestion1") &&
@@ -229,48 +224,136 @@ AuthRouter.post("/verify-security-answer", async(req, res) => {
     Object.keys(req.body).toString().includes("securityAns1") &&
     Object.keys(req.body).toString().includes("securityAns2")
   ) {
-    const {email,securityQuestion1,securityQuestion2,securityAns1,securityAns2}=req.body;
+    const {
+      email,
+      securityQuestion1,
+      securityQuestion2,
+      securityAns1,
+      securityAns2,
+    } = req.body;
     const checkUser = await UserAuth.findOne({
-      email: email,securityQuestion1:securityQuestion1,securityQuestion2:securityQuestion2,securityAns1:securityAns1,securityAns2:securityAns2
+      email: email,
+      securityQuestion1: securityQuestion1,
+      securityQuestion2: securityQuestion2,
+      securityAns1: securityAns1,
+      securityAns2: securityAns2,
     });
     console.log(checkUser);
-    if(checkUser){
-      res.status(200).send("Please reset your password")
+    if (checkUser) {
+      res.status(200).send("Please reset your password");
+    } else {
+      res.status(400).send("User verification failed");
     }
-    else{
-      res.status(400).send("User verification failed")
-    }
-    
-  }
-  else{
-    res.status(400).send("Plase enter valid data")
+  } else {
+    res.status(400).send("Plase enter valid data");
   }
 });
 
-AuthRouter.post('/reset-password',async(req,res)=>{
+AuthRouter.post("/reset-password", async (req, res) => {
   const { email, password } = req.body;
- 
-    bcrypt.hash(password, 10, async (err, hash) => {
-      // const updatePaswd = new UserAuth({
-      //   email: email,
-      //   password: hash,
-      // });
-      try{
-        const updatePassword=await UserAuth.updateOne({email:email},{$set:{password:hash}})
 
-        console.log(updatePassword);
-        res.status(200).send("Password updated");
+  bcrypt.hash(password, 10, async (err, hash) => {
+    // const updatePaswd = new UserAuth({
+    //   email: email,
+    //   password: hash,
+    // });
+    try {
+      const updatePassword = await UserAuth.updateOne(
+        { email: email },
+        { $set: { password: hash } }
+      );
 
-      }catch(err){
-        console.log(err);
-        res.status(400).send(err)
-         mnv
+      console.log(updatePassword);
+      res.status(200).send("Password updated");
+    } catch (err) {
+      console.log(err);
+      res.status(400).send(err);
+      mnv;
+    }
+  });
+});
+module.exports = { AuthRouter };
+
+//upload Profile
+AuthRouter.post("/upload-profile",async(req,res)=>{
+  try {
+    if(
+      Object.keys(req.body).length!=0 && Object.keys(req.body).toString().includes('email')&& Object.keys(req.body).toString().includes('profileImg')&& Object.keys(req.body).toString().includes('firstName')
+    ){
+      const{email,profileImg,firstName}=req.body;
+      let obj=await User.find({email:email});
+      if(obj && obj.length>0){
+        let upload=await uploadeProfileImage(profileImg,
+          "DevSpace/EcommReact/UserDetail",
+          firstName
+        )
+        try {
+          let profileUpload = new User({
+            name: firstName,
+            imgUrl: obj.url,
+          });
+          profileUpload.save();
+          res.send("Profile photo uploaded");
+        } catch (error) {
+          console.log(error);
+          res.status(500).send("something went wrong");
+        }
       }
+      else{
+        res.status(500).send("User does not exist")
+      }
+    }
     
-      
-
-    })
-  
+  } catch (error) {
+    res.status(500).send("something went wrong")
+    
+  }
 
 })
-module.exports = { AuthRouter };
+
+//update checkout detail
+
+AuthRouter.post("/update-check-out-detail", async (req, res) => {
+  if (Object.keys(req.body.length > 0)) {
+    const {
+      firstName,
+      lastName,
+      email,
+      phoneNumber,
+      gender,
+      address,
+      country,
+      state,
+      city,
+      zipCode,
+    } = req.body;
+
+    const checkUser = await User.findOne({ email: email });
+    if (!email) {
+      return res.status(404).send("Something went wrong");
+    } else {
+      const updateDetailOfUser = await User.updateMany(
+        { email },
+        {
+          $set: {
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            phoneNumber: phoneNumber,
+            address: address,
+            country: country,
+            state: state,
+            city: city,
+            zipCode: zipCode,
+          }
+        }
+      );
+
+      if (updateDetailOfUser.modifiedCount === 0) {
+        return res.status(200).send("User detail already updated.");
+      } else {
+        res.status(200).send("User details updated.");
+      }
+    }
+  }
+});

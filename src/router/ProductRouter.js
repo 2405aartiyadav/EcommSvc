@@ -21,7 +21,6 @@ ProductRouter.get("/get-popular-product", async (req, res) => {
     let data = await Product.find({ rating: { $gt: 4 } })
       .sort({ rating: -1, reviewCount: -1 })
       .limit(5);
-    console.log(data);
     res.status(200).send(data);
   } catch (error) {
     console.log(error);

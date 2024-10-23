@@ -10,7 +10,7 @@ const generateToken = (user) => {
     SECRET_KEY,
     {
       algorithm: "HS256",
-      expiresIn: "1m",
+      expiresIn: "10m",
     }
   );
 };

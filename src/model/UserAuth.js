@@ -9,11 +9,11 @@ const UserAuthSchema = new mongoose.Schema({
     required: true,
   },
   password: String,
-  isSecurityQuestionSet:Boolean,
+  isSecurityQuestionSet: Boolean,
   securityQuestion1: String,
   securityAns1: String,
   securityQuestion2: String,
-  securityAns2: String
+  securityAns2: String,
 });
 
 const UserAuth = mongoose.model("UserAuth", UserAuthSchema);

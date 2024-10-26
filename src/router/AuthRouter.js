@@ -111,8 +111,6 @@ AuthRouter.get("/verify-token", (req, res) => {
   }
 });
 
-
-
 //update user detail
 AuthRouter.post("/update-user-detail", async (req, res) => {
   console.log(req.body);
@@ -275,41 +273,38 @@ AuthRouter.post("/reset-password", async (req, res) => {
 module.exports = { AuthRouter };
 
 //upload Profile
-AuthRouter.post("/upload-profile",async(req,res)=>{
-  try {
-    if(
-      Object.keys(req.body).length!=0 && Object.keys(req.body).toString().includes('email')&& Object.keys(req.body).toString().includes('profileImg')&& Object.keys(req.body).toString().includes('firstName')
-    ){
-      const{email,profileImg,firstName}=req.body;
-      let obj=await User.find({email:email});
-      if(obj && obj.length>0){
-        let upload=await uploadeProfileImage(profileImg,
-          "DevSpace/EcommReact/UserDetail",
-          firstName
-        )
-        try {
-          let profileUpload = new User({
-            name: firstName,
-            imgUrl: obj.url,
-          });
-          profileUpload.save();
-          res.send("Profile photo uploaded");
-        } catch (error) {
-          console.log(error);
-          res.status(500).send("something went wrong");
-        }
-      }
-      else{
-        res.status(500).send("User does not exist")
-      }
-    }
-    
-  } catch (error) {
-    res.status(500).send("something went wrong")
-    
-  }
+AuthRouter.post("/upload-profile", async (req, res) => {
+  let reqObj = Object.keys(req.body);
+  if (
+    req.body &&
+    reqObj.length != 0 &&
+    reqObj.toString().includes("profileImg") &&
+    reqObj.toString().includes("username")
+  ) {
+    const { profileImg, username } = req.body;
+    let upload = await uploadeProfileImage(
+      profileImg,
+      "webdev/EcommReact/UserDetail",
+      username
+    );
+    console.log(upload);
 
-})
+    try {
+      let insertImg = await User.updateOne(
+        { username },
+        { $set: { imgUrl: upload.secure_url } }
+      );
+      console.log(insertImg);
+
+      res.status(200).send("Profile photo uploaded");
+    } catch (error) {
+      console.log(error);
+      res.status(500).send("something went wrong");
+    }
+  } else {
+    res.status(400).send("Please send valid user detail");
+  }
+});
 
 //update checkout detail
 
@@ -345,7 +340,7 @@ AuthRouter.post("/update-check-out-detail", async (req, res) => {
             state: state,
             city: city,
             zipCode: zipCode,
-          }
+          },
         }
       );
 
